@@ -3,6 +3,7 @@ from sklearn.pipeline import Pipeline
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
+from sklearn.decomposition import PCA
 
 dtc = DecisionTreeClassifier()
 
@@ -10,6 +11,7 @@ pipeline = Pipeline(
     steps=[
         # ('DecisionTree', dtc)
         # ('MultinomialNB', MultinomialNB())
+        ('PCA', PCA()),
         ('LogisticRegression', LogisticRegression())
     ]
 )

@@ -1,18 +1,52 @@
 import pandas as pd
-from sklearn.pipeline import Pipeline
+from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.tree import DecisionTreeClassifier
+from sklearn.neighbors import KNeighborsRegressor
 from sklearn.naive_bayes import MultinomialNB
 from sklearn.linear_model import LogisticRegression
 from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler, FunctionTransformer
+from sklearn.base import TransformerMixin
+from sklearn.base import BaseEstimator, ClassifierMixin
+from sklearn.naive_bayes import GaussianNB
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import QuantileTransformer
+from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier, ExtraTreesClassifier, BaggingClassifier
+from sklearn.gaussian_process import GaussianProcessClassifier
 
-dtc = DecisionTreeClassifier()
+class ColumnGetter(BaseEstimator, TransformerMixin):
+
+    def __init__(self, columns):
+        self.columns = columns
+
+    def fit(self, data, target=None):
+        return self
+
+    def transform(self, data):
+        return pd.DataFrame(data)[self.columns]
+
+columnSpecificTransforms = FeatureUnion([
+    ('DropFirstCorrelatedSquare', Pipeline(steps=[
+        ('ColumnGetter', ColumnGetter([5])),
+    ])),
+    ('PCASecondSquare', Pipeline(steps=[
+        ('ColumnGetter', ColumnGetter([11, 12, 13, 14, 15, 16])),
+        ('PCA', PCA()),
+        ('QuantileTransform', QuantileTransformer()),
+        ('Rescale', StandardScaler())
+    ])),
+    ('RescaleLongTails', Pipeline(steps=[
+        ('ColumnGetter', ColumnGetter([1, 17, 18, 19, 20, 21, 22])),
+        ('QuantileTransform', QuantileTransformer()),
+        ('Rescale', StandardScaler())
+    ])),
+    ('NonModified', ColumnGetter([2, 3, 4]))
+])
 
 pipeline = Pipeline(
     steps=[
-        # ('DecisionTree', dtc)
-        # ('MultinomialNB', MultinomialNB())
-        ('PCA', PCA()),
-        ('LogisticRegression', LogisticRegression())
+        ("ColumnSpecificTransforms", columnSpecificTransforms),
+        ('Classifier', GaussianProcessClassifier())
     ]
 )
 
@@ -20,17 +54,84 @@ print('Created pipeline')
 
 data = pd.read_csv('credit_card_default.csv')
 
-target = data['DEFAULT_PAY']
-data.drop(labels='DEFAULT_PAY', axis=1, inplace=True)
+data_0 = data[data['DEFAULT_PAY'] == 0]
+data_1 = data[data['DEFAULT_PAY'] == 1]
 
-print('Loaded data')
+train_0, test_0 = train_test_split(data_0, train_size=0.75)
+train_1, test_1 = train_test_split(data_1, train_size=0.75)
 
-pipeline.fit(data, target)
+train_original = pd.concat([train_0, train_1])
+test_original = pd.concat([test_0, test_1])
 
-print('Fitted pipeline')
+print('>>>> Preserved ratio')
 
-result = pipeline.predict(data)
+target = train_original['DEFAULT_PAY']
+train = train_original.drop(labels='DEFAULT_PAY', axis=1, inplace=False)
+test = test_original.drop(labels='DEFAULT_PAY', axis=1, inplace=False)
 
-print('Predictions complete')
+print('     Loaded data')
 
-pd.DataFrame(result).to_csv("predict.csv", index=False, header=False)
+pipeline.fit(train, target)
+
+print('     Fitted pipeline')
+
+result = pipeline.predict(test)
+
+print('     Predictions complete')
+
+pd.DataFrame(test_original['DEFAULT_PAY']).to_csv("target_pres.csv", index=False, header=False)
+pd.DataFrame(result).to_csv("predict_pres.csv", index=False, header=False)
+
+print('>>>> Ratio normalization by under-sampling')
+
+train = pd.concat([
+    train_0.sample(n=7500),
+    train_1
+])
+target = train['DEFAULT_PAY']
+test = test_original.drop(labels='DEFAULT_PAY', axis=1, inplace=False)
+
+train.drop(labels='DEFAULT_PAY', axis=1, inplace=True)
+
+print('     Loaded data')
+
+pipeline.fit(train, target)
+
+print('     Fitted pipeline')
+
+result = pipeline.predict(test)
+
+print('     Predictions complete')
+
+pd.DataFrame(test_original['DEFAULT_PAY']).to_csv("target_under.csv", index=False, header=False)
+pd.DataFrame(result).to_csv("predict_under.csv", index=False, header=False)
+
+print('>>>> Ratio normalization by over-sampling')
+
+train = pd.concat([
+    train_0,
+    train_1,
+    train_1,
+    train_1
+])
+target = train['DEFAULT_PAY']
+test = test_original.drop(labels='DEFAULT_PAY', axis=1, inplace=False)
+
+train.drop(labels='DEFAULT_PAY', axis=1, inplace=True)
+
+print('     Loaded data')
+
+pipeline.fit(train, target)
+
+print('     Fitted pipeline')
+
+result = pipeline.predict(test)
+
+print('     Predictions complete')
+
+pd.DataFrame(test_original['DEFAULT_PAY']).to_csv("target_over.csv", index=False, header=False)
+pd.DataFrame(result).to_csv("predict_over.csv", index=False, header=False)
+
+
+
+

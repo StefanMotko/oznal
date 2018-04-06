@@ -32,7 +32,6 @@ if __name__ == "__main__":
                         help='Path of the file with the predictions.')
     args = parser.parse_args()
     with open(args.prediction) as pred, open(args.target) as gold:
-        print('\nEvaluating {} using as gold labels {}\n'.format(args.prediction, args.target))
         y_gold = [int(g.strip()) for g in gold]
         y_pred = [int(p.strip()) for p in pred]
 

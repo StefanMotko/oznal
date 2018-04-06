@@ -1,4 +1,5 @@
 import pandas as pd
+import numpy as np
 from sklearn.pipeline import Pipeline, FeatureUnion
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.neighbors import KNeighborsRegressor
@@ -14,6 +15,8 @@ from sklearn.preprocessing import QuantileTransformer
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier, ExtraTreesClassifier, BaggingClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
 
+np.random.seed(123456789)
+
 class ColumnGetter(BaseEstimator, TransformerMixin):
 
     def __init__(self, columns):
@@ -24,6 +27,20 @@ class ColumnGetter(BaseEstimator, TransformerMixin):
 
     def transform(self, data):
         return pd.DataFrame(data)[self.columns]
+
+
+class LinearApproximator(BaseEstimator, TransformerMixin):
+
+    def fit(self, data, target=None):
+        return self
+
+    def transform(self, data):
+
+        def approximate(row):
+            return np.polyfit(range(0, row.size), row, 1)
+
+        return pd.DataFrame(data.apply(approximate, axis=1, reduce=True))
+
 
 columnSpecificTransforms = FeatureUnion([
     ('DropFirstCorrelatedSquare', Pipeline(steps=[
@@ -40,13 +57,17 @@ columnSpecificTransforms = FeatureUnion([
         ('QuantileTransform', QuantileTransformer()),
         ('Rescale', StandardScaler())
     ])),
+    ('LinearApproximation', Pipeline(steps=[
+        ('ColumnGetter', ColumnGetter([11, 12, 13, 14, 15, 16])),
+        ('Approximator', LinearApproximator())
+    ])),
     ('NonModified', ColumnGetter([2, 3, 4]))
 ])
 
 pipeline = Pipeline(
     steps=[
         ("ColumnSpecificTransforms", columnSpecificTransforms),
-        ('Classifier', GaussianProcessClassifier())
+        ('Classifier', AdaBoostClassifier(ExtraTreesClassifier()))
     ]
 )
 

@@ -26,7 +26,7 @@ class ColumnGetter(BaseEstimator, TransformerMixin):
         return self
 
     def transform(self, data):
-        return pd.DataFrame(data)[self.columns]
+        return data.iloc[:,self.columns]
 
 
 class LinearApproximator(BaseEstimator, TransformerMixin):
@@ -37,24 +37,24 @@ class LinearApproximator(BaseEstimator, TransformerMixin):
     def transform(self, data):
 
         def approximate(row):
-            return np.polyfit(range(0, row.size), row, 1)
+            return np.polyfit(range(0, row.size), row, 1)[0]
 
         return pd.DataFrame(data.apply(approximate, axis=1, reduce=True))
 
 
 columnSpecificTransforms = FeatureUnion([
     ('DropFirstCorrelatedSquare', Pipeline(steps=[
-        ('ColumnGetter', ColumnGetter([5])),
+        ('ColumnGetter', ColumnGetter([5])), # ignore 6, 7, 8, 9, 10
     ])),
     ('PCASecondSquare', Pipeline(steps=[
         ('ColumnGetter', ColumnGetter([11, 12, 13, 14, 15, 16])),
         ('PCA', PCA()),
-        ('QuantileTransform', QuantileTransformer()),
+        ('QuantileTransform', QuantileTransformer(output_distribution='normal')),
         ('Rescale', StandardScaler())
     ])),
     ('RescaleLongTails', Pipeline(steps=[
         ('ColumnGetter', ColumnGetter([1, 17, 18, 19, 20, 21, 22])),
-        ('QuantileTransform', QuantileTransformer()),
+        ('QuantileTransform', QuantileTransformer(output_distribution='normal')),
         ('Rescale', StandardScaler())
     ])),
     ('LinearApproximation', Pipeline(steps=[

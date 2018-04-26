@@ -75,7 +75,8 @@ pipeline = Pipeline(
 
 param_grid = {
     'Classifier__base_estimator__n_estimators': [ 10, 50, 100 ],
-    'Classifier__base_estimator__criterion': [ 'gini', 'entropy' ]
+    'Classifier__base_estimator__criterion': [ 'gini', 'entropy' ],
+    'Classifier__base_estimator__min_samples_leaf': [ 1, 50, 500 ]
 }
 
 print('Created pipeline')
@@ -135,12 +136,13 @@ print('     Loaded data')
 # pipeline.fit(train, target)
 search = GridSearchCV(pipeline, param_grid, scoring='f1_micro')
 search.fit(train, target)
+print(search.best_params_)
 
-print('     Fitted pipeline')
+# print('     Fitted pipeline')
 
 # result = pipeline.predict(test)
 
-print('     Predictions complete')
+# print('     Predictions complete')
 
 # pd.DataFrame(test_original['DEFAULT_PAY']).to_csv("target_under.csv", index=False, header=False)
 # pd.DataFrame(result).to_csv("predict_under.csv", index=False, header=False)

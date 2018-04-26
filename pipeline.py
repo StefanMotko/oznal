@@ -14,6 +14,7 @@ from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import QuantileTransformer
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier, AdaBoostClassifier, ExtraTreesClassifier, BaggingClassifier
 from sklearn.gaussian_process import GaussianProcessClassifier
+from sklearn.grid_search import GridSearchCV
 
 np.random.seed(123456789)
 
@@ -60,6 +61,7 @@ columnSpecificTransforms = FeatureUnion([
     ('LinearApproximation', Pipeline(steps=[
         ('ColumnGetter', ColumnGetter([11, 12, 13, 14, 15, 16])),
         ('Approximator', LinearApproximator())
+
     ])),
     ('NonModified', ColumnGetter([2, 3, 4]))
 ])
@@ -70,6 +72,11 @@ pipeline = Pipeline(
         ('Classifier', AdaBoostClassifier(ExtraTreesClassifier()))
     ]
 )
+
+param_grid = {
+    'Classifier__base_estimator__n_estimators': [ 10, 50, 100 ],
+    'Classifier__base_estimator__criterion': [ 'gini', 'entropy' ]
+}
 
 print('Created pipeline')
 
@@ -84,24 +91,33 @@ train_1, test_1 = train_test_split(data_1, train_size=0.75)
 train_original = pd.concat([train_0, train_1])
 test_original = pd.concat([test_0, test_1])
 
-print('>>>> Preserved ratio')
+# print('>>>> Preserved ratio')
+data_1 = data[data['DEFAULT_PAY'] == 1]
 
-target = train_original['DEFAULT_PAY']
-train = train_original.drop(labels='DEFAULT_PAY', axis=1, inplace=False)
-test = test_original.drop(labels='DEFAULT_PAY', axis=1, inplace=False)
+train_0, test_0 = train_test_split(data_0, train_size=0.75)
+train_1, test_1 = train_test_split(data_1, train_size=0.75)
 
-print('     Loaded data')
+train_original = pd.concat([train_0, train_1])
+test_original = pd.concat([test_0, test_1])
 
-pipeline.fit(train, target)
-
-print('     Fitted pipeline')
-
-result = pipeline.predict(test)
-
-print('     Predictions complete')
-
-pd.DataFrame(test_original['DEFAULT_PAY']).to_csv("target_pres.csv", index=False, header=False)
-pd.DataFrame(result).to_csv("predict_pres.csv", index=False, header=False)
+# print('>>>> Preserved ratio')
+#
+# target = train_original['DEFAULT_PAY']
+# train = train_original.drop(labels='DEFAULT_PAY', axis=1, inplace=False)
+# test = test_original.drop(labels='DEFAULT_PAY', axis=1, inplace=False)
+#
+# print('     Loaded data')
+#
+# pipeline.fit(train, target)
+#
+# print('     Fitted pipeline')
+#
+# result = pipeline.predict(test)
+#
+# print('     Predictions complete')
+#
+# pd.DataFrame(test_original['DEFAULT_PAY']).to_csv("target_pres.csv", index=False, header=False)
+# pd.DataFrame(result).to_csv("predict_pres.csv", index=False, header=False)
 
 print('>>>> Ratio normalization by under-sampling')
 
@@ -116,42 +132,44 @@ train.drop(labels='DEFAULT_PAY', axis=1, inplace=True)
 
 print('     Loaded data')
 
-pipeline.fit(train, target)
+# pipeline.fit(train, target)
+search = GridSearchCV(pipeline, param_grid, scoring='f1_micro')
+search.fit(train, target)
 
 print('     Fitted pipeline')
 
-result = pipeline.predict(test)
+# result = pipeline.predict(test)
 
 print('     Predictions complete')
 
-pd.DataFrame(test_original['DEFAULT_PAY']).to_csv("target_under.csv", index=False, header=False)
-pd.DataFrame(result).to_csv("predict_under.csv", index=False, header=False)
+# pd.DataFrame(test_original['DEFAULT_PAY']).to_csv("target_under.csv", index=False, header=False)
+# pd.DataFrame(result).to_csv("predict_under.csv", index=False, header=False)
 
-print('>>>> Ratio normalization by over-sampling')
-
-train = pd.concat([
-    train_0,
-    train_1,
-    train_1,
-    train_1
-])
-target = train['DEFAULT_PAY']
-test = test_original.drop(labels='DEFAULT_PAY', axis=1, inplace=False)
-
-train.drop(labels='DEFAULT_PAY', axis=1, inplace=True)
-
-print('     Loaded data')
-
-pipeline.fit(train, target)
-
-print('     Fitted pipeline')
-
-result = pipeline.predict(test)
-
-print('     Predictions complete')
-
-pd.DataFrame(test_original['DEFAULT_PAY']).to_csv("target_over.csv", index=False, header=False)
-pd.DataFrame(result).to_csv("predict_over.csv", index=False, header=False)
+# print('>>>> Ratio normalization by over-sampling')
+#
+# train = pd.concat([
+#     train_0,
+#     train_1,
+#     train_1,
+#     train_1
+# ])
+# target = train['DEFAULT_PAY']
+# test = test_original.drop(labels='DEFAULT_PAY', axis=1, inplace=False)
+#
+# train.drop(labels='DEFAULT_PAY', axis=1, inplace=True)
+#
+# print('     Loaded data')
+#
+# pipeline.fit(train, target)
+#
+# print('     Fitted pipeline')
+#
+# result = pipeline.predict(test)
+#
+# print('     Predictions complete')
+#
+# pd.DataFrame(test_original['DEFAULT_PAY']).to_csv("target_over.csv", index=False, header=False)
+# pd.DataFrame(result).to_csv("predict_over.csv", index=False, header=False)
 
 
 
